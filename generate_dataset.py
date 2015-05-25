@@ -118,23 +118,37 @@ for place in places:
     break
 
 
-# Save data to CSV
+# Open CSV writer for final output
 try:
-    out = open(os.path.join(OUTDIR, OUTFILE), 'w')
+    out = open(os.path.join(OUTDIR, OUTFILE), 'wb')
+    csvout = csv.writer(out, delimiter=',')
 except:
     logging.error('Unable to open output file for writing, aborting!')
     sys.exit(1)
 
+# Generate header
+header = [u'place', u'date', u'utctime'] + obs_fields
+csvout.writerow(header)
+
+# Process all observations and write them to CSV file
 for place in data:
     for date in data[place]:
         for obs in data[place][date]:
-            observation = []
+            # Initialize observation as list with place, date and time first
+            observation = [place]
+            d = obs['utcdate']['year'] + obs['utcdate']['mon'] + \
+                obs['utcdate']['mday']
+            t = obs['utcdate']['hour'] + ':' + obs['utcdate']['min']
+            observation.append(d)
+            observation.append(t)
+            # Add all fields to list, with data or empty strings
             for field in obs_fields:
                 if field in obs:
                     observation.append(obs[field])
                 else:
                     observation.append('')
             # Save observation to output file
-            pprint(observation)
+            csvout.writerow(observation)
 
-
+# Close output file
+out.close()
