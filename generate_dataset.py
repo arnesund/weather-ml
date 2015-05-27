@@ -13,7 +13,7 @@ import datetime
 from pprint import pprint
 
 # Number of days to query API for
-DAYS = 3
+DAYS = 1
 
 # Places to query the API for
 places = ['Norway/Oslo', 'Norway/Stavanger', 'Norway/Kristiansand',
@@ -161,13 +161,17 @@ for place in places:
     prefix = place[offset+1:offset+2].lower()
     for field in obs_fields:
         header.append('_'.join([prefix, field]))
+    header.append('target_o_tempm')
 
 # Save header to file
 csvout.writerow(header)
 
-# Process all observations and write them to CSV file
-for d in data:
-    for t in data[d]:
+# Process all observations in order to create one long list
+observations = []
+datekeys = data.keys()
+for d in sorted(datekeys):
+    timekeys = data[d].keys()
+    for t in sorted(timekeys):
         obs = []
 
         # Validate dataset
@@ -175,7 +179,7 @@ for d in data:
             # Skip this datetime, since ML needs all observations 
             # to have the same amount of fields
             logger.warning('Datetime {0}-{1} skipped. '.format(d, t) + \
-                'Does not have data for all places ({2} out of {3}).'.format(\
+                'Does not have data for all places ({0} out of {1}).'.format(\
                 len(data[d][t].keys()), len(places)))
             continue
 
@@ -183,8 +187,15 @@ for d in data:
         for place in places:
             obs = obs + data[d][t][place]
 
-        # Save observation to output file
-        csvout.writerow([d, t] + obs)
+        # Save observation to list
+        observations.append([d, t] + obs)
+
+# Add target value to each line
+for i in xrange(len(observations)):
+    observations[i].append(observations[i+1][17])
+
+    # Save to CSV file
+    cvs.writerow(observation)
 
 # Close output file
 out.close()
