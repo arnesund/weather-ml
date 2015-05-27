@@ -58,3 +58,4 @@ target/
 
 # Project-specific
 data/
+logs/
