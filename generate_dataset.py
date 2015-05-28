@@ -6,6 +6,7 @@
 import os
 import csv
 import sys
+import json
 import errno
 import logging
 import requests
@@ -13,7 +14,7 @@ import datetime
 from pprint import pprint
 
 # Number of days to query API for
-DAYS = 1
+DAYS = 2
 
 # Places to query the API for
 places = ['Norway/Oslo', 'Norway/Stavanger', 'Norway/Kristiansand',
@@ -103,24 +104,38 @@ for place in places:
     for date in dates:
         logger.info('Processing {0} date {1}...'.format(place, date))
 
+        # Read API data from file if already cached
+        res_data = None
+        path = os.path.join(OUTDIR, place, date) + '.json'
+        if os.path.isfile(path):
+            try:
+                #res_data = json.load(open(path))
+                res_data = eval(open(path).read())
+            except:
+                logger.warning('Caught exception trying to read JSON ' + \
+                    'object from file {0}, skipping file.'.format(path))
+
         # Get data from Wunderground API
-        try:
-            res = requests.get(API_BASEURL + '/' + API_KEY + '/' + \
-                    API_PRODUCT + '_' + str(date) + '/q/' + place + '.json')
-            res_data = res.json()
-        except:
-            logger.error('Unable to query API for {0} date {1}, skipping it.'.format(place, date))
-            continue
-        
-        # Save JSON data to one file per date per place
-        try:
-            out = open(os.path.join(OUTDIR, place, date) + '.json', 'w')
-            pprint(res_data, out)
-            out.close()
-        except:
-            logger.error('Unable to write data to output file for ' + \
-                '{0} date {1}, skipping it.'.format(place, date))
-            continue
+        if not res_data:
+            try:
+                res = requests.get(API_BASEURL + '/' + API_KEY + '/' + \
+                        API_PRODUCT + '_' + str(date) + '/q/' + place + \
+                        '.json')
+                res_data = res.json()
+            except:
+                logger.error('Unable to query API for ' + \
+                    '{0} date {1}, skipping it.'.format(place, date))
+                continue
+
+            # Save JSON data to one file per date per place
+            try:
+                out = open(path, 'w')
+                json.dump(res_data, out)
+                out.close()
+            except:
+                logger.error('Unable to write data to output file for ' + \
+                    '{0} date {1}, skipping it.'.format(place, date))
+                continue
 
         # Add data to dictionary
         for obs in res_data['history']['observations']:
@@ -191,11 +206,11 @@ for d in sorted(datekeys):
         observations.append([d, t] + obs)
 
 # Add target value to each line
-for i in xrange(len(observations)):
+for i in xrange(len(observations)-1):
     observations[i].append(observations[i+1][17])
 
     # Save to CSV file
-    cvs.writerow(observation)
+    csvout.writerow(observations[i])
 
 # Close output file
 out.close()
