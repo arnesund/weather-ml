@@ -14,7 +14,7 @@ import datetime
 from pprint import pprint
 
 # Number of days to query API for, up to and including yesterday
-DAYS = 3
+DAYS = 14
 
 # Places to query the API for
 places = ['Norway/Oslo', 'Norway/Stavanger', 'Norway/Kristiansand',
@@ -103,8 +103,7 @@ for place in places:
         path = os.path.join(OUTDIR, place, date) + '.json'
         if os.path.isfile(path):
             try:
-                #res_data = json.load(open(path))
-                res_data = eval(open(path).read())
+                res_data = json.load(open(path))
             except:
                 logger.warning('Caught exception trying to read JSON ' + \
                     'object from file {0}, skipping file.'.format(path))
