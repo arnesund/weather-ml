@@ -182,7 +182,8 @@ for place in places:
     prefix = place[offset+1:offset+2].lower()
     for field in obs_fields:
         header.append('_'.join([prefix, field]))
-    header.append('target_o_tempm')
+# Add target variable name
+header.append('target_o_tempm')
 
 # Save header to files
 csvout.writerow(header)
