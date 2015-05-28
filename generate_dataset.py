@@ -13,8 +13,8 @@ import requests
 import datetime
 from pprint import pprint
 
-# Number of days to query API for
-DAYS = 2
+# Number of days to query API for, up to and including yesterday
+DAYS = 3
 
 # Places to query the API for
 places = ['Norway/Oslo', 'Norway/Stavanger', 'Norway/Kristiansand',
@@ -23,6 +23,7 @@ places = ['Norway/Oslo', 'Norway/Stavanger', 'Norway/Kristiansand',
 # Output directories and filenames
 OUTDIR = 'data'
 OUTFILE = 'dataset.csv'
+TESTSET = 'testset.csv'
 LOGFILE = 'logs/generate_dataset.log'
 
 # Wunderground API details
@@ -51,35 +52,26 @@ else:
 
 # Fields to save from each observation (excluding purely informative fields)
 obs_fields = [u'conds',
- u'dewpti',
  u'dewptm',
  u'fog',
  u'hail',
- u'heatindexi',
  u'heatindexm',
  u'hum',
- u'precipi',
  u'precipm',
- u'pressurei',
  u'pressurem',
  u'rain',
  u'snow',
- u'tempi',
  u'tempm',
  u'thunder',
  u'tornado',
- u'visi',
  u'vism',
  u'wdird',
  u'wdire',
- u'wgusti',
  u'wgustm',
- u'windchilli',
  u'windchillm',
- u'wspdi',
  u'wspdm']
 
-# Prepare output destinations
+# Prepare directories for output and disk cache of API data
 for place in places:
     path = os.path.join(OUTDIR, place)
     try:
@@ -95,11 +87,13 @@ for place in places:
 # Generate ascending list of dates to query for (format: YYYYMMDD)
 dates = []
 today = datetime.date.today()
-for d in xrange(DAYS, 0, -1):   # Start DAYS days in the past and go forward
+# Start DAYS+1 days in the past and go forward to yesterday
+for d in xrange(DAYS+1, 1, -1):
     dates.append(datetime.date.strftime(today - datetime.timedelta(days=d), \
         "%Y%m%d"))
 
 data = {}
+targets = {}
 for place in places:
     for date in dates:
         logger.info('Processing {0} date {1}...'.format(place, date))
@@ -159,13 +153,26 @@ for place in places:
                 else:
                     data[d][t][place].append('')
 
+            # Save target value to use later
+            if place == 'Norway/Oslo' and t == '12:00':
+                # This target value applies to yesterday, so use that as key
+                day_before = datetime.date(int(obs['utcdate']['year']), \
+                                int(obs['utcdate']['mon']), \
+                                int(obs['utcdate']['mday'])) - \
+                                datetime.timedelta(days=1)
+                datestring = datetime.date.strftime(day_before, '%Y%m%d')
+                targets[datestring] = obs['tempm']
 
-# Open CSV writer for final output
+pprint(targets)
+
+# Open CSV writers for final output
 try:
     out = open(os.path.join(OUTDIR, OUTFILE), 'wb')
     csvout = csv.writer(out, delimiter=',')
+    testout = open(os.path.join(OUTDIR, TESTSET), 'wb')
+    csvtestout = csv.writer(testout, delimiter=',')
 except:
-    logger.error('Unable to open output file for writing, aborting!')
+    logger.error('Unable to open an output file for writing, aborting!')
     sys.exit(1)
 
 # Generate header
@@ -178,22 +185,23 @@ for place in places:
         header.append('_'.join([prefix, field]))
     header.append('target_o_tempm')
 
-# Save header to file
+# Save header to files
 csvout.writerow(header)
+csvtestout.writerow(header)
 
 # Process all observations in order to create one long list
 observations = []
-datekeys = data.keys()
-for d in sorted(datekeys):
-    timekeys = data[d].keys()
-    for t in sorted(timekeys):
+# Save observations with unknown target value to a separate testing set
+testing_set = []
+for d in sorted(data.keys()):
+    for t in sorted(data[d].keys()):
         obs = []
 
         # Validate dataset
         if len(data[d][t].keys()) != len(places):
             # Skip this datetime, since ML needs all observations 
-            # to have the same amount of fields
-            logger.warning('Datetime {0}-{1} skipped. '.format(d, t) + \
+            # to have the same amount of variables (fields)
+            logger.warning('Datetime {0} {1} skipped. '.format(d, t) + \
                 'Does not have data for all places ({0} out of {1}).'.format(\
                 len(data[d][t].keys()), len(places)))
             continue
@@ -202,15 +210,18 @@ for d in sorted(datekeys):
         for place in places:
             obs = obs + data[d][t][place]
 
-        # Save observation to list
-        observations.append([d, t] + obs)
+        # Save observation to list, with target value at the end
+        if d in targets:
+            observations.append([d, t] + obs + [targets[d]])
+        else:
+            # Leave target value field empty
+            testing_set.append([d, t] + obs + [''])
 
-# Add target value to each line
-for i in xrange(len(observations)-1):
-    observations[i].append(observations[i+1][17])
+# Save to output files
+for obs in observations:
+    csvout.writerow(obs)
+for obs in testing_set:
+    csvtestout.writerow(obs)
 
-    # Save to CSV file
-    csvout.writerow(observations[i])
-
-# Close output file
 out.close()
+testout.close()
