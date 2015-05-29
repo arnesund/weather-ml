@@ -153,7 +153,8 @@ for place in places:
             for field in obs_fields:
                 if field in obs:
                     # Replace invalid values with empty values
-                    if obs[field] in ['-999', '-9999']:
+                    if obs[field] in ['999', '-999', '-9999', '-9999.0', \
+                            '-9999.00'] and field.find('pressurem') == -1:
                         obs[field] = ''
                     data[d][t][place].append(obs[field])
                 else:
