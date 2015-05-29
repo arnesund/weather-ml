@@ -175,7 +175,7 @@ except:
     sys.exit(1)
 
 # Generate header
-header = [u'date', u'utctime']
+header = [u'datetime_utc']
 for place in places:
     # Prefix all field names with first char of city name (after the slash)
     offset = place.find('/')
@@ -212,10 +212,10 @@ for d in sorted(data.keys()):
 
         # Save observation to list, with target value at the end
         if d in targets:
-            observations.append([d, t] + obs + [targets[d]])
+            observations.append([d + t] + obs + [targets[d]])
         else:
             # Leave target value field empty
-            testing_set.append([d, t] + obs + [''])
+            testing_set.append([d + t] + obs + ['0'])
 
 # Save to output files
 for obs in observations:
