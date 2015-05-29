@@ -152,6 +152,9 @@ for place in places:
             # Save observation to list, in the order specified by obs_fields
             for field in obs_fields:
                 if field in obs:
+                    # Replace invalid values with empty values
+                    if obs[field] in ['-999', '-9999']:
+                        obs[field] = ''
                     data[d][t][place].append(obs[field])
                 else:
                     data[d][t][place].append('')
@@ -220,7 +223,7 @@ for d in sorted(data.keys()):
             observations.append([d + '-' + t] + obs + [targets[d]])
         else:
             # Leave target value field empty
-            testing_set.append([d + '-' + t] + obs + ['0'])
+            testing_set.append([d + '-' + t] + obs + [''])
 
 # Save to output files
 for obs in observations:
