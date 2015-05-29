@@ -7,6 +7,7 @@ import os
 import csv
 import sys
 import json
+import time
 import errno
 import logging
 import requests
@@ -87,8 +88,8 @@ for place in places:
 # Generate ascending list of dates to query for (format: YYYYMMDD)
 dates = []
 today = datetime.date.today()
-# Start DAYS+1 days in the past and go forward to yesterday
-for d in xrange(DAYS+1, 1, -1):
+# Start DAYS days in the past and go forward to yesterday
+for d in xrange(DAYS, 0, -1):
     dates.append(datetime.date.strftime(today - datetime.timedelta(days=d), \
         "%Y%m%d"))
 
@@ -119,6 +120,9 @@ for place in places:
                 logger.error('Unable to query API for ' + \
                     '{0} date {1}, skipping it.'.format(place, date))
                 continue
+
+            # Wait to reduce API calls to <10 calls/min (free access tier)
+            time.sleep(10)
 
             # Save JSON data to one file per date per place
             try:
@@ -162,7 +166,8 @@ for place in places:
                 datestring = datetime.date.strftime(day_before, '%Y%m%d')
                 targets[datestring] = obs['tempm']
 
-pprint(targets)
+# Print target table to debug log
+logger.debug('Target o_tempm for each day of observations: {0}'.format(targets))
 
 # Open CSV writers for final output
 try:
@@ -201,7 +206,7 @@ for d in sorted(data.keys()):
         if len(data[d][t].keys()) != len(places):
             # Skip this datetime, since ML needs all observations 
             # to have the same amount of variables (fields)
-            logger.warning('Datetime {0} {1} skipped. '.format(d, t) + \
+            logger.debug('Datetime {0} {1} skipped. '.format(d, t) + \
                 'Does not have data for all places ({0} out of {1}).'.format(\
                 len(data[d][t].keys()), len(places)))
             continue
@@ -212,10 +217,10 @@ for d in sorted(data.keys()):
 
         # Save observation to list, with target value at the end
         if d in targets:
-            observations.append([d + t] + obs + [targets[d]])
+            observations.append([d + '-' + t] + obs + [targets[d]])
         else:
             # Leave target value field empty
-            testing_set.append([d + t] + obs + ['0'])
+            testing_set.append([d + '-' + t] + obs + ['0'])
 
 # Save to output files
 for obs in observations:
