@@ -1,5 +1,7 @@
 # weather-ml
-Experiment with Machine Learning on weather datasets
+Experiment with Machine Learning on weather datasets: Can Amazon Machine Learning be used to predict the weather?
+
+For a walkthrough of how to perform the analysis, and some results, see my blog post at http://arnesund.com/2015/05/31/using-amazon-machine-learning-to-predict-the-weather/
 
 ## Prerequisites
 
